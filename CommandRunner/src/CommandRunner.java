@@ -26,7 +26,8 @@ public class CommandRunner implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("CommandRunner running");			
+        String name = "CommandRunner";
+    	System.out.println("CommandRunner running");			
         scanner = new Scanner(System.in);         
 
         while ( true ) {
@@ -37,7 +38,25 @@ public class CommandRunner implements Runnable {
 	    			break;
 	    		}
 	
-	    		resource.consumeData(lineIn);
+	    		System.out.printf("%s:writing command\n", name);
+	    		resource.setCommand(lineIn);
+	    		
+	    		while (!resource.getDataReady()) {
+//		    		System.out.printf("%s:waiting for resource dataReady\n", name);
+	    			if ( System.in.available() > 0 ) {
+			    		System.out.printf("%s:scanner has a line\n", name);
+	    	    		lineIn = scanner.nextLine()+'\r';
+	    	    		if ( lineIn.contains("s") ) {
+				    		System.out.printf("%s:sending stop command\n", name);
+	    	    			resource.setStopCommand(true);
+	    	    		}
+	    			}	    				
+			        Thread.sleep(500);
+	    		}
+	    		
+	    		System.out.printf("%s:consume data\n", name);
+	    		//resource.consumeData(lineIn);
+	    		resource.consumeData();
 		        Thread.sleep(1000);
 	        }
 		    catch (Exception e) {

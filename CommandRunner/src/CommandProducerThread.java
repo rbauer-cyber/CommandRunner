@@ -12,7 +12,7 @@ class CommandProducerThread implements Runnable {
     private AtomicBoolean stopped = new AtomicBoolean(false);
 
 	// Define pattern for detecting motion control commands, single letter commands.
-	private Pattern commandPattern = Pattern.compile("[+-hf]");
+	private Pattern commandPattern = Pattern.compile("[+-hfm]");
 
     public void interrupt() {
         running.set(false);
@@ -38,19 +38,19 @@ class CommandProducerThread implements Runnable {
         String commandResult = null;
         //String line = null;
         
-        int timeOut = 4000;
+        int timeOut = 4000;        
 
-    	if ( command.contains("u") ) {
+    	if ( command.contains("u") || command.contains("o") ) {
    			terminator = "command";
    			timeOut = 4000;
-    	}
-    	else if ( command.contains("h") || command.contains("f") || command.contains("m") ) {
-    		terminator = "MotionMgr: motor";
-   			timeOut = 60000;
     	}
     	else if ( matcher.find() ) { 
     		terminator = "MotionMgr: motor";
    			timeOut = 60000;
+    	}
+    	else
+    	{
+    		System.out.println("failed to find command keyword");
     	}
     	
 		resource.produceData(command, terminator, timeOut);

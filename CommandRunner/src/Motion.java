@@ -50,10 +50,13 @@ public class Motion extends JFrame {
     JButton btnBackward;
     JButton btnFindHome;
     JButton btnStop;
+    JButton btnGoToPosition;
     
 	private static Pattern numberPattern = Pattern.compile("\\d+"); 
 	private JTextArea textArea;
 	private JTextField destinationText;
+	private JButton btnOff;
+	private JLabel lblDestination;
     
 	/**
 	 * Launch the application.
@@ -92,11 +95,9 @@ public class Motion extends JFrame {
 		});
 	}
 
-	private void stopCommand(String command) {
+	private void stopCommand() {
 		try {
-			if (  command != null ) {
-				resource.stopCommand(command);
-			}
+			resource.setStopCommand(true);
 		}
 	    catch (Exception e) {
 	        // This block will catch any exception that is a subclass of Exception
@@ -139,8 +140,7 @@ public class Motion extends JFrame {
 	private void updateTime() {
 		long elapsedTime = System.currentTimeMillis() - startTime;
         //System.out.println("updateTimer");
-		if (elapsedTime >= resource.getTimeOut() || !resource.getRunning())
-		{
+		if (elapsedTime >= resource.getTimeOut() || !resource.getRunning()) {
 			// parse command results using input scanner
 			stopTimer();
 			if (resource.commandResult != null) {
@@ -197,8 +197,8 @@ public class Motion extends JFrame {
         System.out.println("Gui resources closed");
 	}
 	
- 	private void runButtonCommand(JButton button, String text, String command ) {
-		statusText.setText(text);
+ 	private void runButtonCommand(JButton button, String command ) {
+		statusText.setText(button.getText());
 		button.setBackground(Color.CYAN);
 	    btnActive = button;
 		runCommand(command);
@@ -210,7 +210,7 @@ public class Motion extends JFrame {
 	public Motion() {
 		setTitle("Motor Controller");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 402, 318);
+		setBounds(100, 100, 402, 340);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -224,6 +224,8 @@ public class Motion extends JFrame {
 				FormSpecs.RELATED_GAP_COLSPEC,
 				FormSpecs.DEFAULT_COLSPEC,},
 			new RowSpec[] {
+				FormSpecs.RELATED_GAP_ROWSPEC,
+				FormSpecs.DEFAULT_ROWSPEC,
 				FormSpecs.RELATED_GAP_ROWSPEC,
 				FormSpecs.DEFAULT_ROWSPEC,
 				FormSpecs.RELATED_GAP_ROWSPEC,
@@ -255,7 +257,7 @@ public class Motion extends JFrame {
 		btnForward = new JButton("Forward");
 		btnForward.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				runButtonCommand(btnForward, "Move Forward", "+\r");
+				runButtonCommand(btnForward, "+\r");
 			}
 		});
 		contentPane.add(btnForward, "2, 2");
@@ -263,7 +265,7 @@ public class Motion extends JFrame {
 		btnHome = new JButton("Home");
 		btnHome.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				runButtonCommand(btnHome, "Move Home", "h\r");
+				runButtonCommand(btnHome, "h\r");
 			}
 		});
 		contentPane.add(btnHome, "4, 2");
@@ -271,14 +273,14 @@ public class Motion extends JFrame {
 		btnBackward = new JButton("Reverse");
 		btnBackward.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				runButtonCommand(btnBackward, "Move Reverse", "-\r");
+				runButtonCommand(btnBackward, "-\r");
 			}
 		});
 		
 		btnUpdate = new JButton("Update");
 		btnUpdate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				runButtonCommand(btnUpdate, "Update Status", "u\r");
+				runButtonCommand(btnUpdate, "u\r");
 			}
 		});
 		contentPane.add(btnUpdate, "6, 2");
@@ -287,7 +289,7 @@ public class Motion extends JFrame {
 		btnFindHome = new JButton("Find Home");
 		btnFindHome.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				runButtonCommand(btnFindHome, "Find Home", "f\r");
+				runButtonCommand(btnFindHome, "f\r");
 			}
 		});
 		contentPane.add(btnFindHome, "4, 4");
@@ -295,62 +297,72 @@ public class Motion extends JFrame {
 		btnStop = new JButton("Stop");
 		btnStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				statusText.setText("Stop");
-				btnStop.setBackground(Color.GREEN);
-			    stopCommand("s\r");
-			    btnStop.setBackground(backgroundColor);
+				//runButtonCommand(btnStop, "s\r");
+				stopCommand();
 			}
 		});
 		contentPane.add(btnStop, "6, 4");
 		
-		JLabel lblPosition = new JLabel("Position");
-		lblPosition.setHorizontalAlignment(SwingConstants.CENTER);
-		contentPane.add(lblPosition, "2, 6");
-		
-		JButton btnGoToPosition = new JButton("Go to Position");
+		btnGoToPosition = new JButton("Go to Position");
 		btnGoToPosition.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				statusText.setText("Go to Position");
+				//statusText.setText("Go to Position");
 				String enteredText = destinationText.getText();
 				String command = "m " + enteredText + "\r";
 				if (!enteredText.isEmpty()) {
-					runButtonCommand(btnGoToPosition, "Goto Position", command);
-					//System.out.println(command);
-					//runButtonCommand(btnFindHome, "Go to Position", "f\r");
+					runButtonCommand(btnGoToPosition, command);
 				}
 			}
 		});
 		contentPane.add(btnGoToPosition, "4, 6");
 		
+		btnOff = new JButton("Off");
+		btnOff.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String command = "o\r";
+				runButtonCommand(btnOff, command);
+			}
+		});
+		contentPane.add(btnOff, "2, 6");
+		
+		JLabel lblPosition = new JLabel("Position");
+		lblPosition.setHorizontalAlignment(SwingConstants.CENTER);
+		contentPane.add(lblPosition, "2, 8");
+		
+		lblDestination = new JLabel("Destination");
+		lblDestination.setHorizontalAlignment(SwingConstants.CENTER);
+		contentPane.add(lblDestination, "4, 8");
+		
 		JLabel lblStatus = new JLabel("Status");
 		lblStatus.setHorizontalAlignment(SwingConstants.CENTER);
-		contentPane.add(lblStatus, "6, 6");
+		contentPane.add(lblStatus, "6, 8");
 		
 		positionText = new JTextField();
 		positionText.setBackground(new Color(255, 255, 255));
 		positionText.setEditable(false);
-		contentPane.add(positionText, "2, 8, fill, default");
+		contentPane.add(positionText, "2, 10, fill, default");
 		positionText.setColumns(10);
 		
 		destinationText = new JTextField();
-		contentPane.add(destinationText, "4, 8, fill, default");
+		contentPane.add(destinationText, "4, 10, fill, default");
 		destinationText.setColumns(10);
 		
 		statusText = new JTextField();
 		statusText.setBackground(new Color(255, 255, 255));
 		statusText.setEditable(false);
-		contentPane.add(statusText, "6, 8, fill, default");
+		contentPane.add(statusText, "6, 10, fill, default");
 		statusText.setColumns(10);
 		
 		textArea = new JTextArea();
+		textArea.setEditable(false);
 		textArea.setColumns(1);
 		textArea.setRows(40);
 		textArea.setLineWrap(true);
 		textArea.setWrapStyleWord(true);
-		contentPane.add(textArea, "2, 10, 5, 1, fill, fill");
+		contentPane.add(textArea, "2, 12, 5, 1, fill, fill");
 		
 		JScrollBar scrollBar = new JScrollBar();
-		contentPane.add(scrollBar, "8, 10");
+		contentPane.add(scrollBar, "8, 12");
 		
 		backgroundColor = btnUpdate.getBackground();
 	}

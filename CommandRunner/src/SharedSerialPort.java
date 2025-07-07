@@ -20,6 +20,7 @@ public class SharedSerialPort {
 	public boolean runFromPrompt = true;
 	public boolean portReady = false;
 	public boolean running = false;
+	private boolean stop = false;
 	private final int readTimeOut = 1000;
 	private long timeOutCount = 0;
 	public String commandResult = null;
@@ -46,8 +47,10 @@ public class SharedSerialPort {
         System.out.printf("SerialPort:Wrote: %s: size: %d\n", strOut, dataOut.length);
 	}
 
-	public void setCommand(String command) {
+	public synchronized void setCommand(String command) {
 		// Notify the Command thread that a new command has been requested.
+		this.dataReady = false;
+		this.stop = false;
 		this.command = command;
 	}
 
@@ -60,7 +63,17 @@ public class SharedSerialPort {
 		this.commandResult = result;
 	}
 
-	public void stopCommand(String command) {
+	public synchronized void setStopCommand(boolean state) {
+		this.stop = state;
+	}
+
+	public synchronized boolean getStopCommand() {
+		return this.stop;
+	}
+
+	public synchronized void stopCommand() {
+		this.stop = false;
+		String command = "s\r";
 		try {
 			writeCommand(command);
 		}
@@ -77,6 +90,10 @@ public class SharedSerialPort {
 		return (timeOutCount+2) * 1000;
 	}
 	
+	public boolean getDataReady() {
+		return this.dataReady;
+	}
+
 	public boolean getRunning() {
 		return this.running;
 	}
@@ -104,11 +121,15 @@ public class SharedSerialPort {
             // Error count of 20 indicates 20 seconds elapsed.
             while ( !foundPrompt && timeOutCount > 1 ) {
 	            try {
-		            while ( !foundPrompt && (line = reader.readLine()) != null ) {
+		            if ( (line = reader.readLine()) != null ) {
 		            	lineStack.push(line);
 		                System.out.println("Received: " + line);		                
-		                foundPrompt = line.contains(terminator);		                
+		                foundPrompt = line.contains(terminator);
 		            }
+	                if ( this.getStopCommand() ) {
+		                System.out.println("SerialPort: sending stop command");		                
+	                	this.stopCommand();
+	                }
 	            }
 	            catch (IOException e) {
 	            	if ( timeOutCount-- < 1 ) {
@@ -133,15 +154,24 @@ public class SharedSerialPort {
     }
 
     public synchronized void consumeData(String command) throws InterruptedException {
+        this.dataReady = false; // Reset for next production cycle
         this.command = command;
     	while (!dataReady) {
             wait(); // Wait until data is ready
         }
         // ... consume data ...
-        dataReady = false; // Reset for next production cycle
+        //dataReady = false; // Reset for next production cycle
         this.command = null;
     }
     
+    public synchronized void consumeData() throws InterruptedException {
+    	while (!dataReady) {
+            wait(); // Wait until data is ready
+        }
+        // ... consume data ...
+        this.command = null;
+    }
+
     public void closePort() {
     	this.running = false;
     	this.port.closePort();
