@@ -54,9 +54,9 @@ public class CommandRunner implements Runnable {
 			        Thread.sleep(500);
 	    		}
 	    		
-	    		System.out.printf("%s:consume data\n", name);
 	    		//resource.consumeData(lineIn);
 	    		resource.consumeData();
+	    		System.out.printf("%s:consume data done\n", name);
 		        Thread.sleep(1000);
 	        }
 		    catch (Exception e) {

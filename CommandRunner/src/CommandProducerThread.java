@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 class CommandProducerThread implements Runnable {
     private SharedSerialPort resource;
     private boolean commandDone = false;
+    private String name = "CommandProducer";
 
     private Thread worker;
     private AtomicBoolean running = new AtomicBoolean(false);
@@ -50,18 +51,23 @@ class CommandProducerThread implements Runnable {
     	}
     	else
     	{
-    		System.out.println("failed to find command keyword");
+    		System.out.printf("%s: failed to find command keyword\n", name);
     	}
     	
 		resource.produceData(command, terminator, timeOut);
 		lineStack = resource.getLineStack();
+		System.out.printf("%s: processing command result, response count = %d\n", name, lineStack.size());
+		int commandEnterCount = 0;
 				
         while ( commandResult == null ) {
         	for (String line : lineStack) {
             	//line = lineStack.pop();
 	        	
 	            if ( line.contains("Motor: position") ) {
-	            	commandResult = line;		                	
+	            	commandResult = line;        	
+	            }
+	            else if ( line.contains("Motor: no move") ) {
+	            	commandResult = line;        	
 	            }
 	            else if (line.contains("MotionMgr: motor position")) {
 	            	commandResult = line;		                			                	
@@ -72,16 +78,27 @@ class CommandProducerThread implements Runnable {
 	            	String substring = line.substring(firstIndex);
 	            	commandResult = "MotionMgr: motor "+substring;		                			                	
 	            }
+	            else if (line.contains("Enter command")) {
+	        		System.out.printf("%s: processing results, response = %s\n", name, line);
+	        		commandEnterCount += 1;
+	        		
+	        		if (commandEnterCount > 3) {
+		        		System.out.printf("%s: processing results, too many: = %d, stack size: %d\n",
+		        				name, commandEnterCount , lineStack.size());
+		        		commandResult = "Command error";
+		        		break;
+	        		}
+	            }
             }
         }
 		        
         resource.setCommandResult(commandResult);
-    	System.out.println("CommandProducer command done");
+    	System.out.printf("%s: command done\n", name);
     	commandDone = true;
 	}
 	
 	private void runFromCommand(String command) {
-    	System.out.println("CommandProducer running command "+command);
+    	System.out.printf("%s: running command %s", name, command);
     	commandDone = false;
 		runCommand(command);		
 	}
@@ -97,7 +114,7 @@ class CommandProducerThread implements Runnable {
     @Override
     public void run() {
     	// Command producer waits for other thread to request command and then executes command.
-    	System.out.println("CommandProducer running");
+    	System.out.printf("%s running\n", name);
         running.set(true);
         stopped.set(false);
  
@@ -107,16 +124,16 @@ class CommandProducerThread implements Runnable {
 	            	runFromCommand(resource.command);  
 	            	commandDone = true;
 	    		}
-		        Thread.sleep(1000);
+		        Thread.sleep(500);
     		}
     	}
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("CommandProducer interrupted");
+            System.out.printf("%s: interrupted\n", name);
         }
     	
     	//resource.closePort();
     	stopped.set(true);    	
-        System.out.println("CommandProducer stopped");
+        System.out.printf("%s: stopped\n", name);
     }
 }

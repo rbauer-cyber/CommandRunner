@@ -8,6 +8,8 @@ import java.util.Stack;
 //import java.util.regex.Pattern;
 
 import com.fazecast.jSerialComm.SerialPort;
+//import com.fazecast.jSerialComm.SerialPortDataListener;
+//import com.fazecast.jSerialComm.SerialPortEvent;
 
 public class SharedSerialPort {
     private boolean dataReady = false;
@@ -25,7 +27,7 @@ public class SharedSerialPort {
 	private long timeOutCount = 0;
 	public String commandResult = null;
 	public String command = null;
-	
+
 	private static void delay(int timeMs) {	
 		try {
 	        Thread.sleep(timeMs);
@@ -63,15 +65,21 @@ public class SharedSerialPort {
 		this.commandResult = result;
 	}
 
-	public synchronized void setStopCommand(boolean state) {
+	public void setStopCommand(boolean state) {
 		this.stop = state;
+		System.out.printf("SerialPort: stop = %b\n", this.stop);
 	}
 
-	public synchronized boolean getStopCommand() {
+	public boolean getStopCommand(int count) {
+//		int remainder = count % 5000000; 
+//		
+//		if ( remainder == 0 ) {
+//			System.out.printf("SerialPort: count: %d, stop = %b\n", count, this.stop);
+//		}
 		return this.stop;
 	}
 
-	public synchronized void stopCommand() {
+	private void stopCommand() {
 		this.stop = false;
 		String command = "s\r";
 		try {
@@ -104,7 +112,7 @@ public class SharedSerialPort {
     	this.command = command;
 		this.timeOutCount = timeOut / this.readTimeOut;    	
     	this.running = true;
-    	lineStack.clear();    	
+    	lineStack.clear();
 //    	boolean gotCommand = false;
 //    	String commandToRun = "";
     	
@@ -112,6 +120,7 @@ public class SharedSerialPort {
         	// Send the command to the serial port and collect
         	// all the responses until the command prompt is received
         	// All the motion commands are single letter commands [+|-|h|f|m]
+        	int count = 0;
         	writeCommand(command);
         	
             boolean foundPrompt = false;
@@ -121,14 +130,22 @@ public class SharedSerialPort {
             // Error count of 20 indicates 20 seconds elapsed.
             while ( !foundPrompt && timeOutCount > 1 ) {
 	            try {
-		            if ( (line = reader.readLine()) != null ) {
-		            	lineStack.push(line);
-		                System.out.println("Received: " + line);		                
-		                foundPrompt = line.contains(terminator);
-		            }
-	                if ( this.getStopCommand() ) {
+	            	if ( port.bytesAvailable() > 0 ) {
+			            if ( (line = reader.readLine()) != null ) {
+			            	lineStack.push(line);
+			                System.out.println("Received: " + line);
+			                
+			                if (line.contains(terminator) || line.contains("no move")) {
+			                	foundPrompt = true;
+			                }
+			            }
+	            	}
+	                if ( this.getStopCommand(count) ) {
 		                System.out.println("SerialPort: sending stop command");		                
 	                	this.stopCommand();
+	                }
+	                else {
+	                	count += 1;
 	                }
 	            }
 	            catch (IOException e) {
@@ -137,6 +154,7 @@ public class SharedSerialPort {
 	            	}
 	            }
             }
+            //System.out.printf("SerialPort: command terminated, count = %d\n", count);
             System.out.println("SerialPort: command terminated");
         }
         catch (Exception e) {
