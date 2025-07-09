@@ -35,18 +35,17 @@ class CommandProducerThread implements Runnable {
 	private void runCommand(String command) {	
         Matcher matcher = commandPattern.matcher(command);
         Stack<String> lineStack = null;
-        String terminator = null;
+        String successTerminator = "OK";
+        String failTerminator = "ERROR";
         String commandResult = null;
         //String line = null;
         
         int timeOut = 4000;        
 
     	if ( command.contains("u") || command.contains("o") ) {
-   			terminator = "command";
    			timeOut = 4000;
     	}
     	else if ( matcher.find() ) { 
-    		terminator = "MotionMgr: motor";
    			timeOut = 60000;
     	}
     	else
@@ -54,7 +53,7 @@ class CommandProducerThread implements Runnable {
     		System.out.printf("%s: failed to find command keyword\n", name);
     	}
     	
-		resource.produceData(command, terminator, timeOut);
+		resource.produceData(command, successTerminator, failTerminator, timeOut);
 		lineStack = resource.getLineStack();
 		System.out.printf("%s: processing command result, response count = %d\n", name, lineStack.size());
 		int commandEnterCount = 0;
@@ -62,15 +61,10 @@ class CommandProducerThread implements Runnable {
         while ( commandResult == null ) {
         	for (String line : lineStack) {
             	//line = lineStack.pop();
+        		System.out.println(line);
 	        	
-	            if ( line.contains("Motor: position") ) {
-	            	commandResult = line;        	
-	            }
-	            else if ( line.contains("Motor: no move") ) {
-	            	commandResult = line;        	
-	            }
-	            else if (line.contains("MotionMgr: motor position")) {
-	            	commandResult = line;		                			                	
+	            if (line.contains("MotionMgr: motor position")) {
+	            	commandResult = line;	                	
 	            }
 	            else if (line.contains("MotionMgr: motor error")) {
 	            	// Motor position is last field in string, find start of field.

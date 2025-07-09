@@ -106,11 +106,12 @@ public class SharedSerialPort {
 		return this.running;
 	}
 
-	public synchronized void produceData(String command, String terminator, long timeOut) {
+	public synchronized void produceData(String command, String successTerminator, String failTerminator, long timeOut) {
         // ... produce data ... 
     	dataReady = false;
     	this.command = command;
-		this.timeOutCount = timeOut / this.readTimeOut;    	
+		//this.timeOutCount = timeOut / this.readTimeOut;    	
+		this.timeOutCount = 30;    	
     	this.running = true;
     	lineStack.clear();
 //    	boolean gotCommand = false;
@@ -133,9 +134,11 @@ public class SharedSerialPort {
 	            	if ( port.bytesAvailable() > 0 ) {
 			            if ( (line = reader.readLine()) != null ) {
 			            	lineStack.push(line);
-			                System.out.println("Received: " + line);
+			            	// Comment out next line and display received line.
+			            	// from linestack after prompt received. 
+			                //System.out.println("Received: " + line);
 			                
-			                if (line.contains(terminator) || line.contains("no move")) {
+			                if (line.contains(successTerminator) || line.contains(failTerminator)) {
 			                	foundPrompt = true;
 			                }
 			            }
@@ -187,6 +190,11 @@ public class SharedSerialPort {
             wait(); // Wait until data is ready
         }
         // ... consume data ...
+    	
+        for (String line : lineStack) {
+        	System.out.println(line);
+        }
+
         this.command = null;
     }
 

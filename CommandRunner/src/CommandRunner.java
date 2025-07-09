@@ -42,7 +42,7 @@ public class CommandRunner implements Runnable {
 	    		resource.setCommand(lineIn);
 	    		
 	    		while (!resource.getDataReady()) {
-//		    		System.out.printf("%s:waiting for resource dataReady\n", name);
+		    		//System.out.printf("%s:waiting for resource dataReady\n", name);
 	    			if ( System.in.available() > 0 ) {
 			    		System.out.printf("%s:scanner has a line\n", name);
 	    	    		lineIn = scanner.nextLine()+'\r';
@@ -51,13 +51,13 @@ public class CommandRunner implements Runnable {
 	    	    			resource.setStopCommand(true);
 	    	    		}
 	    			}	    				
-			        Thread.sleep(500);
+			        Thread.sleep(100);
 	    		}
 	    		
 	    		//resource.consumeData(lineIn);
-	    		resource.consumeData();
+	    		//resource.consumeData();
 	    		System.out.printf("%s:consume data done\n", name);
-		        Thread.sleep(1000);
+		        Thread.sleep(500);
 	        }
 		    catch (Exception e) {
 		        // This block will catch any exception that is a subclass of Exception
