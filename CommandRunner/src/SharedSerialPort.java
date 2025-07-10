@@ -8,22 +8,28 @@ import java.util.Stack;
 //import java.util.regex.Pattern;
 
 import com.fazecast.jSerialComm.SerialPort;
-//import com.fazecast.jSerialComm.SerialPortDataListener;
-//import com.fazecast.jSerialComm.SerialPortEvent;
+import com.fazecast.jSerialComm.SerialPortDataListener;
+import com.fazecast.jSerialComm.SerialPortMessageListener;
+
+import com.fazecast.jSerialComm.SerialPortEvent;
 
 public class SharedSerialPort {
     private boolean dataReady = false;
     private SerialPort port;
+    private MessageListener portListener;
 	private OutputStream writer;
 	private InputStreamReader inputStream;
 	private BufferedReader reader;
     private Stack<String> lineStack = new Stack<String>();
+    private byte[][] messageStack;
 
 	public boolean runFromPrompt = true;
 	public boolean portReady = false;
 	public boolean running = false;
 	private boolean stop = false;
+	private boolean foundCommandDone = true;
 	private final int readTimeOut = 1000;
+	private int messageIndex = 0;
 	private long timeOutCount = 0;
 	public String commandResult = null;
 	public String command = null;
@@ -36,8 +42,54 @@ public class SharedSerialPort {
 	    }
 	}
 
+//	private static int findByte(byte[] array, byte target) {
+//        for (int i = 0; i < array.length; i++) {
+//            if (array[i] == target) {
+//                return i; // Return the index if found
+//            }
+//        }
+//        return -1; // Return -1 if not found
+//    }
+
+	private final class MessageListener implements SerialPortMessageListener
+	{
+	    @Override
+	    public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
+	
+	    @Override
+	    public byte[] getMessageDelimiter() { return new byte[] { (byte)0x3B }; }
+	
+	    @Override
+	    public boolean delimiterIndicatesEndOfMessage() { return true; }
+	
+	    @Override
+	    public void serialEvent(SerialPortEvent event)
+	    { 
+	    	byte[] message = event.getReceivedData();
+	    	messageStack[messageIndex++] = message;
+	    	int length = message.length;
+	    	
+	    	if ( !foundCommandDone ) {
+	    		// Look for <<OK;>> or <<ERR;>> for command completion by arduino.
+	    		// Character that terminates message is ';'.
+	    		if ( message[length-1] == 59 ) {
+	    		   if ( message[length-2] == 75 && message[length-3] == 79 ) {
+		    			// Command success <<OK;>>
+		    			foundCommandDone = true;
+	    		   }
+	    		   else if ( message[length-2] == 82 && message[length-3] == 82 ) {
+		    			// Command fail <<ERR;>>
+		    			foundCommandDone = true;
+	    		   }	    			  
+	    		}
+	    	}
+	    }
+	}
+	
 	private void writeCommand(String command) throws IOException {
 		byte[] dataOut = command.getBytes();
+		//String strOut = new String(dataOut, StandardCharsets.UTF_8);
+		//System.out.printf("SerialPort:Writing: %s: size: %d\n", strOut, dataOut.length);
 		//writer.write(dataOut,0,dataOut.length);
 		
     	for (Byte b : dataOut ) {
@@ -45,8 +97,6 @@ public class SharedSerialPort {
 	        delay(100);
     	}
 
-		String strOut = new String(dataOut, StandardCharsets.UTF_8);
-        System.out.printf("SerialPort:Wrote: %s: size: %d\n", strOut, dataOut.length);
 	}
 
 	public synchronized void setCommand(String command) {
@@ -79,7 +129,7 @@ public class SharedSerialPort {
 		return this.stop;
 	}
 
-	private void stopCommand() {
+	public void stopCommand() {
 		this.stop = false;
 		String command = "s\r";
 		try {
@@ -106,12 +156,14 @@ public class SharedSerialPort {
 		return this.running;
 	}
 
-	public synchronized void produceData(String command, String successTerminator, String failTerminator, long timeOut) {
+	public synchronized void produceData(String command, String successTerminator, String failTerminator, long timeOutMs) {
         // ... produce data ... 
     	dataReady = false;
     	this.command = command;
+    	int loopDelayMs = 1000;
 		//this.timeOutCount = timeOut / this.readTimeOut;    	
-		this.timeOutCount = 30;    	
+		//this.timeOutCount = timeOut / this.readTimeOut;    	
+		this.timeOutCount = timeOutMs / loopDelayMs;  	
     	this.running = true;
     	lineStack.clear();
 //    	boolean gotCommand = false;
@@ -122,42 +174,31 @@ public class SharedSerialPort {
         	// all the responses until the command prompt is received
         	// All the motion commands are single letter commands [+|-|h|f|m]
         	int count = 0;
+            this.foundCommandDone = false;
+            this.messageIndex = 0;
         	writeCommand(command);
         	
-            boolean foundPrompt = false;
-            String line = "";
-
             // Motor move commands take a long time to execute
             // Error count of 20 indicates 20 seconds elapsed.
-            while ( !foundPrompt && timeOutCount > 1 ) {
-	            try {
-	            	if ( port.bytesAvailable() > 0 ) {
-			            if ( (line = reader.readLine()) != null ) {
-			            	lineStack.push(line);
-			            	// Comment out next line and display received line.
-			            	// from linestack after prompt received. 
-			                //System.out.println("Received: " + line);
-			                
-			                if (line.contains(successTerminator) || line.contains(failTerminator)) {
-			                	foundPrompt = true;
-			                }
-			            }
-	            	}
-	                if ( this.getStopCommand(count) ) {
-		                System.out.println("SerialPort: sending stop command");		                
-	                	this.stopCommand();
-	                }
-	                else {
-	                	count += 1;
-	                }
-	            }
-	            catch (IOException e) {
-	            	if ( timeOutCount-- < 1 ) {
-		                System.err.println("Error reading from serial port: " + e.getMessage());	            		
-	            	}
-	            }
-            }
             //System.out.printf("SerialPort: command terminated, count = %d\n", count);
+            
+            while ( !this.foundCommandDone && count < 30 ) {
+                delay(loopDelayMs);
+                count++;
+            }
+            
+        	System.out.println("foundCommandDone "+this.foundCommandDone);
+        	System.out.println("messageCount = "+this.messageIndex);
+
+        	for ( int i = 0; i < messageIndex; i++ )
+            {
+            	String str = new String(messageStack[i], StandardCharsets.UTF_8);
+            	str.trim();
+            	//System.out.printf("<<%s>>\n",str);
+            	lineStack.push(str);
+            	messageStack[i] = null;
+            }
+            
             System.out.println("SerialPort: command terminated");
         }
         catch (Exception e) {
@@ -222,7 +263,11 @@ public class SharedSerialPort {
 
         	writer = port.getOutputStream();
         	inputStream = new InputStreamReader(port.getInputStream());
-        	reader = new BufferedReader(inputStream);
+        	reader = new BufferedReader(inputStream);        	
+        	portListener = new MessageListener();
+        	port.addDataListener(portListener);
+        	messageStack = new byte[20][];
+        	
         	this.portReady = true;
             System.out.println("Serial port opened successfully.");
         }

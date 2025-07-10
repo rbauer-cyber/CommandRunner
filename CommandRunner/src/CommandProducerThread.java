@@ -61,7 +61,7 @@ class CommandProducerThread implements Runnable {
         while ( commandResult == null ) {
         	for (String line : lineStack) {
             	//line = lineStack.pop();
-        		System.out.println(line);
+        		//System.out.println(line);
 	        	
 	            if (line.contains("MotionMgr: motor position")) {
 	            	commandResult = line;	                	
@@ -88,11 +88,12 @@ class CommandProducerThread implements Runnable {
 		        
         resource.setCommandResult(commandResult);
     	System.out.printf("%s: command done\n", name);
+    	System.out.printf("%s: result = <<%s>>\n", name, commandResult);
     	commandDone = true;
 	}
 	
 	private void runFromCommand(String command) {
-    	System.out.printf("%s: running command %s", name, command);
+    	System.out.printf("%s: running command: %s", name, command);
     	commandDone = false;
 		runCommand(command);		
 	}

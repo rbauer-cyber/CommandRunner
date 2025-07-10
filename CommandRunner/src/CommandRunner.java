@@ -48,7 +48,8 @@ public class CommandRunner implements Runnable {
 	    	    		lineIn = scanner.nextLine()+'\r';
 	    	    		if ( lineIn.contains("s") ) {
 				    		System.out.printf("%s:sending stop command\n", name);
-	    	    			resource.setStopCommand(true);
+	    	    			//resource.setStopCommand(true);
+	    	    			resource.stopCommand();
 	    	    		}
 	    			}	    				
 			        Thread.sleep(100);
