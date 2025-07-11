@@ -97,7 +97,7 @@ public class Motion extends JFrame {
 
 	private void stopCommand() {
 		try {
-			resource.setStopCommand(true);
+			resource.stopCommand();
 		}
 	    catch (Exception e) {
 	        // This block will catch any exception that is a subclass of Exception
@@ -155,7 +155,8 @@ public class Motion extends JFrame {
 
 		        for (String line : lineStack) {
 		        	if ( !line.isBlank() && !line.contains("Enter") ) {		        		
-		        		textArea.append(line+"\n");		        				        	
+		        		//textArea.append(line+"\n");		        				        	
+		        		textArea.append(line);		        				        	
 			        } 
 	            }
 			}

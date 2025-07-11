@@ -1,6 +1,6 @@
-import java.io.BufferedReader;
+//import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+//import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Stack;
@@ -8,7 +8,7 @@ import java.util.Stack;
 //import java.util.regex.Pattern;
 
 import com.fazecast.jSerialComm.SerialPort;
-import com.fazecast.jSerialComm.SerialPortDataListener;
+//import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortMessageListener;
 
 import com.fazecast.jSerialComm.SerialPortEvent;
@@ -18,8 +18,6 @@ public class SharedSerialPort {
     private SerialPort port;
     private MessageListener portListener;
 	private OutputStream writer;
-	private InputStreamReader inputStream;
-	private BufferedReader reader;
     private Stack<String> lineStack = new Stack<String>();
     private byte[][] messageStack;
 
@@ -42,21 +40,14 @@ public class SharedSerialPort {
 	    }
 	}
 
-//	private static int findByte(byte[] array, byte target) {
-//        for (int i = 0; i < array.length; i++) {
-//            if (array[i] == target) {
-//                return i; // Return the index if found
-//            }
-//        }
-//        return -1; // Return -1 if not found
-//    }
-
+	// Implementing and using this class solved problems with missing messages from arduino.
 	private final class MessageListener implements SerialPortMessageListener
 	{
 	    @Override
 	    public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
 	
 	    @Override
+	    // semicolon, ';', terminates a message
 	    public byte[] getMessageDelimiter() { return new byte[] { (byte)0x3B }; }
 	
 	    @Override
@@ -70,15 +61,15 @@ public class SharedSerialPort {
 	    	int length = message.length;
 	    	
 	    	if ( !foundCommandDone ) {
-	    		// Look for <<OK;>> or <<ERR;>> for command completion by arduino.
-	    		// Character that terminates message is ';'.
+	    		// Look for "OK;" or "ERR;" for command completion by Arduino.
+	    		// Character that terminates message is ';'(59).
 	    		if ( message[length-1] == 59 ) {
 	    		   if ( message[length-2] == 75 && message[length-3] == 79 ) {
-		    			// Command success <<OK;>>
+		    			// Command success "OK;"
 		    			foundCommandDone = true;
 	    		   }
 	    		   else if ( message[length-2] == 82 && message[length-3] == 82 ) {
-		    			// Command fail <<ERR;>>
+		    			// Command fail "ERR;"
 		    			foundCommandDone = true;
 	    		   }	    			  
 	    		}
@@ -196,7 +187,6 @@ public class SharedSerialPort {
             	str.trim();
             	//System.out.printf("<<%s>>\n",str);
             	lineStack.push(str);
-            	messageStack[i] = null;
             }
             
             System.out.println("SerialPort: command terminated");
@@ -262,8 +252,6 @@ public class SharedSerialPort {
             port.setComPortTimeouts(portTimeOuts, readTimeOut, 0);
 
         	writer = port.getOutputStream();
-        	inputStream = new InputStreamReader(port.getInputStream());
-        	reader = new BufferedReader(inputStream);        	
         	portListener = new MessageListener();
         	port.addDataListener(portListener);
         	messageStack = new byte[20][];
