@@ -25,7 +25,7 @@ public class SharedSerialPort {
 	public boolean portReady = false;
 	public boolean running = false;
 	private boolean stop = false;
-	private boolean foundCommandDone = true;
+	private boolean commandDone = true;
 	private final int readTimeOut = 1000;
 	private int messageIndex = 0;
 	private long timeOutCount = 0;
@@ -60,17 +60,17 @@ public class SharedSerialPort {
 	    	messageStack[messageIndex++] = message;
 	    	int length = message.length;
 	    	
-	    	if ( !foundCommandDone ) {
+	    	if ( !commandDone ) {
 	    		// Look for "OK;" or "ERR;" for command completion by Arduino.
 	    		// Character that terminates message is ';'(59).
 	    		if ( message[length-1] == 59 ) {
 	    		   if ( message[length-2] == 75 && message[length-3] == 79 ) {
 		    			// Command success "OK;"
-		    			foundCommandDone = true;
+		    			commandDone = true;
 	    		   }
 	    		   else if ( message[length-2] == 82 && message[length-3] == 82 ) {
 		    			// Command fail "ERR;"
-		    			foundCommandDone = true;
+		    			commandDone = true;
 	    		   }	    			  
 	    		}
 	    	}
@@ -165,7 +165,7 @@ public class SharedSerialPort {
         	// all the responses until the command prompt is received
         	// All the motion commands are single letter commands [+|-|h|f|m]
         	int count = 0;
-            this.foundCommandDone = false;
+            this.commandDone = false;
             this.messageIndex = 0;
         	writeCommand(command);
         	
@@ -173,12 +173,12 @@ public class SharedSerialPort {
             // Error count of 20 indicates 20 seconds elapsed.
             //System.out.printf("SerialPort: command terminated, count = %d\n", count);
             
-            while ( !this.foundCommandDone && count < 30 ) {
+            while ( !this.commandDone && count < 30 ) {
                 delay(loopDelayMs);
                 count++;
             }
             
-        	System.out.println("foundCommandDone "+this.foundCommandDone);
+        	System.out.println("commandDone "+this.commandDone);
         	System.out.println("messageCount = "+this.messageIndex);
 
         	for ( int i = 0; i < messageIndex; i++ )
